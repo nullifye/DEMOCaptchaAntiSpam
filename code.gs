@@ -172,7 +172,7 @@ function doPost(e) {
 
         }
       }
-      else if(text == '/whoami') {
+      else if(new RegExp('\/whoami(@' + botHandlerName + ')?', 'i').test(text)) {
         let msg = "`ID        :` `" + Bot.getUserID() + "`\n" +
                   "`Username  :` " + Bot.getUsername() + "\n" +
                   "`First Name:` " + Bot.getUserFirstName() + "\n" +
