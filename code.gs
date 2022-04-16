@@ -8,6 +8,7 @@ const timeLimitInSec = 20;
 // delete service message
 const deleteSMJoin   = true;
 const deleteSMLeft   = true;
+const notAllowedType = ['animation', 'sticker', 'document', 'photo', 'location', 'audio', 'poll'];
 
 // https://github.com/peterherrmann/BetterLog
 let Logger = BetterLog.useSpreadsheet(loggerSheet);
@@ -284,5 +285,25 @@ function doPost(e) {
       }
     }
 
+    // not text message in supergroup
+    else if(Bot.isChatType('supergroup') && !Bot.isTextMessage()) {
+      // checking message for deletion
+      notAllowedType.some(n => {
+        let found = n in TelegramJSON.message;
+
+        if(found) {
+          // delete bot message in group
+          options = {
+            'chat_id': Bot.getChatID(),
+            'message_id': TelegramJSON.message.message_id
+          };
+
+          Bot.request('deleteMessage', options);
+
+          return found;
+        }
+
+      });
+    }
   }
 }
