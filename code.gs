@@ -68,7 +68,7 @@ function scheduleClearTmp_() {
       rowsDeleted++;
     }
     else if (epochNow - epochStart > timeLimitInSec) {
-      //delete bot msg in group
+      // delete bot message in group
       options = {
         'chat_id': row[1],
         'message_id': row[2]
@@ -141,7 +141,7 @@ function doPost(e) {
 
       activeSheet.appendRow([Bot.getUserID(), Bot.getChatID(), resultMsg.result.message_id, '', new Date()]);
 
-      //delete service message
+      // delete service message
       if(deleteSMJoin) {
         options = {
           'chat_id': Bot.getChatID(),
@@ -155,7 +155,7 @@ function doPost(e) {
 
     else if(Bot.isLeftChatMember()) {
 
-      //delete service message
+      // delete service message
       if(deleteSMLeft) {
         options = {
           'chat_id': Bot.getChatID(),
@@ -180,7 +180,7 @@ function doPost(e) {
         let epochNow   = Math.floor(new Date().getTime()/1000.0);
         let epochStart = Math.floor(new Date(b[4]).getTime()/1000.0);
 
-        //check if already exists 
+        // check if already exists 
         if(b && b[3] != '') {
           let msg = "Selesaikan _captcha_ yang telah dihantar sebelum ini (" + (epochNow-epochStart) + " saat yang lalu).";
           Bot.sendMessage(msg);
@@ -205,7 +205,7 @@ function doPost(e) {
                   "`Username  :` " + Bot.getUsername() + "\n" +
                   "`First Name:` " + Bot.getUserFirstName() + "\n" +
                   "`Last Name :` " + Bot.getUserLastName() + "\n" +
-                  "`Language  :` " + TelegramJSON.message.from.language_code + "\n" +
+                  "`Language  :` " + (TelegramJSON.message.from.language_code || '') + "\n" +
                   "`Is bot    :` " + TelegramJSON.message.from.is_bot;
 
         Bot.sendMessage(msg);
@@ -216,7 +216,7 @@ function doPost(e) {
     else if(Bot.isChatType('private') && Bot.isTextMessage()) {
       let text = Bot.getTextMessage();
 
-      //check if already exists
+      // check if already exists
       let a = activeSheet.getRange(2, 1, activeSheet.getLastRow(), activeSheet.getLastColumn()).getValues();
       let b = a.find(x => x[0] == Bot.getUserID());
 
@@ -224,11 +224,11 @@ function doPost(e) {
         let epochNow   = Math.floor(new Date().getTime()/1000.0);
         let epochStart = Math.floor(new Date(b[4]).getTime()/1000.0);
 
-        //expired
+        // expired
         if(epochNow - epochStart > timeLimitInSec) {
           Bot.sendMessage('Maaf, masa untuk menyelesaikan _captcha_ telah tamat (melebihi ' + timeLimitInSec + ' saat). Anda akan dikeluarkan dari group.');
 
-          //delete bot msg in group
+          // delete bot message in group
           options = {
             'chat_id': b[1],
             'message_id': b[2]
@@ -241,10 +241,10 @@ function doPost(e) {
           activeSheet.getRange(c + 2, 1).setValue('X');
         }
         else {
-          //captcha betul
+          // captcha betul
           if(b[3] == text) {
 
-            //remove restriction
+            // remove restriction
             let options = {
               'chat_id': b[1],
               'user_id': b[0],
@@ -260,7 +260,7 @@ function doPost(e) {
 
             Bot.sendMessage('*Tahniah!* Anda telah *dinyahsenyap* dalam grup. Gunakan grup ini untuk manfaat bersama.');
 
-            //delete bot msg in group
+            // delete bot message in group
             options = {
               'chat_id': b[1],
               'message_id': b[2]
@@ -278,7 +278,7 @@ function doPost(e) {
           }
         }
       }
-      //tidak wujud
+      // tidak wujud
       else {
         Bot.sendMessage('Maaf, maklumat anda tidak ditemui. Berkemungkinan anda telah dinyahsenyap dalam grup atau masa untuk menyelesaikan _captcha_ telah tamat atau anda memang telah dikeluarkan dari group.');
       }
