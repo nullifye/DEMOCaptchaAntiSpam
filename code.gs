@@ -221,7 +221,10 @@ function doPost(e) {
               'chat_id': b[1],
               'user_id': b[0],
               'permissions': {
-                'can_send_messages': true
+                'can_send_messages': true,
+                'can_send_media_messages': true,
+                'can_send_polls': true,
+                'can_send_other_messages': true
               }
             };
 
