@@ -5,6 +5,9 @@ const webAppURL  = 'Your-Web-App-URL';
 
 const botHandlerName = 'Your-Telegram-Bot-Handler-Name';
 const timeLimitInSec = 20;
+// delete service message
+const deleteSMJoin   = true;
+const deleteSMLeft   = true;
 
 // https://github.com/peterherrmann/BetterLog
 let Logger = BetterLog.useSpreadsheet(loggerSheet);
@@ -137,6 +140,31 @@ function doPost(e) {
       let resultMsg = Bot.sendMessage(msg, btn);
 
       activeSheet.appendRow([Bot.getUserID(), Bot.getChatID(), resultMsg.result.message_id, '', new Date()]);
+
+      //delete service message
+      if(deleteSMJoin) {
+        options = {
+          'chat_id': Bot.getChatID(),
+          'message_id': TelegramJSON.message.message_id
+        };
+
+        Bot.request('deleteMessage', options);
+      }
+
+    }
+
+    else if(Bot.isLeftChatMember()) {
+
+      //delete service message
+      if(deleteSMLeft) {
+        options = {
+          'chat_id': Bot.getChatID(),
+          'message_id': TelegramJSON.message.message_id
+        };
+
+        Bot.request('deleteMessage', options);
+      }
+
     }
 
     // command message
