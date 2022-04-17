@@ -8,7 +8,18 @@ const timeLimitInSec = 20;
 // delete service message
 const deleteSMJoin   = true;
 const deleteSMLeft   = true;
-const notAllowedType = ['animation', 'sticker', 'document', 'photo', 'location', 'audio', 'poll'];
+// delete these type of message
+const deleteGIF      = true;
+const deleteSticker  = false;
+const deletePhoto    = true;
+const deleteDocument = true;
+const deleteMap      = true;
+const deleteAudio    = true;
+const deleteVoice    = true;
+const deletePoll     = true;
+const deleteContact  = true;
+const deleteVideo    = true;
+const deleteRoundVideo = true;
 
 // https://github.com/peterherrmann/BetterLog
 let Logger = BetterLog.useSpreadsheet(loggerSheet);
@@ -49,6 +60,15 @@ function oneTimeSetup() {
   }
 }
 
+function deleteMessageInChat_(chatID, messageID) {
+  let options = {
+    'chat_id': chatID,
+    'message_id': messageID
+  };
+
+  Bot.request('deleteMessage', options);
+}
+
 function scheduleClearTmp_() {
   let epochNow = Math.floor(new Date().getTime()/1000.0);
 
@@ -70,12 +90,7 @@ function scheduleClearTmp_() {
     }
     else if (epochNow - epochStart > timeLimitInSec) {
       // delete bot message in group
-      options = {
-        'chat_id': row[1],
-        'message_id': row[2]
-      };
-
-      Bot.request('deleteMessage', options);
+      this.deleteMessageInChat_(row[1], row[2]);
 
       activeSheet.deleteRow((parseInt(i)+1) - rowsDeleted);
       rowsDeleted++;
@@ -144,12 +159,7 @@ function doPost(e) {
 
       // delete service message
       if(deleteSMJoin) {
-        options = {
-          'chat_id': Bot.getChatID(),
-          'message_id': TelegramJSON.message.message_id
-        };
-
-        Bot.request('deleteMessage', options);
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
       }
 
     }
@@ -158,12 +168,7 @@ function doPost(e) {
 
       // delete service message
       if(deleteSMLeft) {
-        options = {
-          'chat_id': Bot.getChatID(),
-          'message_id': TelegramJSON.message.message_id
-        };
-
-        Bot.request('deleteMessage', options);
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
       }
 
     }
@@ -213,7 +218,7 @@ function doPost(e) {
       }
     }
 
-    // normal message in PM
+    // text message in PM
     else if(Bot.isChatType('private') && Bot.isTextMessage()) {
       let text = Bot.getTextMessage();
 
@@ -230,12 +235,7 @@ function doPost(e) {
           Bot.sendMessage('Maaf, masa untuk menyelesaikan _captcha_ telah tamat (melebihi ' + timeLimitInSec + ' saat). Anda akan dikeluarkan dari group.');
 
           // delete bot message in group
-          options = {
-            'chat_id': b[1],
-            'message_id': b[2]
-          };
-
-          Bot.request('deleteMessage', options);
+          this.deleteMessageInChat_(b[1], b[2]);
 
           let c = a.findIndex(x => x[0] == Bot.getUserID());
 
@@ -262,12 +262,7 @@ function doPost(e) {
             Bot.sendMessage('*Tahniah!* Anda telah *dinyahsenyap* dalam grup. Gunakan grup ini untuk manfaat bersama.');
 
             // delete bot message in group
-            options = {
-              'chat_id': b[1],
-              'message_id': b[2]
-            };
-
-            Bot.request('deleteMessage', options);
+            this.deleteMessageInChat_(b[1], b[2]);
 
             let c = a.findIndex(x => x[0] == Bot.getUserID());
 
@@ -285,25 +280,53 @@ function doPost(e) {
       }
     }
 
-    // not text message in supergroup
+    // msessage in supergroup
     else if(Bot.isChatType('supergroup') && !Bot.isTextMessage()) {
       // checking message for deletion
-      notAllowedType.some(n => {
-        let found = n in TelegramJSON.message;
+      if(Bot.isGIF() && deleteGIF) {
+        // delete bot message in group
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
+      else if(Bot.isSticker() && deleteSticker) {
+        // delete bot message in group
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
+      else if(Bot.isPhoto() && deletePhoto) {
+        // delete bot message in group
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
+      else if(Bot.isDocument() && deleteDocument) {
+        // delete bot message in group
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
+      else if(Bot.isMap() && deleteMap) {
+        // delete bot message in group
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
+      else if(Bot.isAudio() && deleteAudio) {
+        // delete bot message in group
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
+      else if(Bot.isVoice() && deleteVoice) {
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
+      else if(Bot.isPoll() && deletePoll) {
+        // delete bot message in group
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
+      else if(Bot.isContact() && deleteContact) {
+        // delete bot message in group
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
+      else if(Bot.isVideo() && deleteVideo) {
+        // delete bot message in group
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
+      else if(Bot.isRoundVideo() && deleteRoundVideo) {
+        // delete bot message in group
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
 
-        if(found) {
-          // delete bot message in group
-          options = {
-            'chat_id': Bot.getChatID(),
-            'message_id': TelegramJSON.message.message_id
-          };
-
-          Bot.request('deleteMessage', options);
-
-          return found;
-        }
-
-      });
     }
   }
 }
