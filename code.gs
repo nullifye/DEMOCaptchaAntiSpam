@@ -10,6 +10,7 @@ const deleteSMJoin   = true;
 const deleteSMLeft   = true;
 // delete these type of message
 const deleteGIF      = true;
+const deleteGame     = true;
 const deleteSticker  = false;
 const deletePhoto    = true;
 const deleteDocument = true;
@@ -284,6 +285,10 @@ function doPost(e) {
     else if(Bot.isChatType('supergroup') && !Bot.isTextMessage()) {
       // checking message for deletion
       if(Bot.isGIF() && deleteGIF) {
+        // delete bot message in group
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
+      else if(Bot.isGame() && deleteGame) {
         // delete bot message in group
         this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
       }
