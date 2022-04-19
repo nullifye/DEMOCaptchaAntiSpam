@@ -5,9 +5,12 @@ const webAppURL  = 'Your-Web-App-URL';
 
 const botHandlerName = 'Your-Telegram-Bot-Handler-Name';
 const timeLimitInSec = 20;
+const bannedInSec    = 60;
 // delete service message
 const deleteSMJoin   = true;
 const deleteSMLeft   = true;
+
+const deleteForward  = true;
 // delete these type of message
 const deleteGIF      = true;
 const deleteGame     = true;
@@ -21,6 +24,9 @@ const deletePoll     = true;
 const deleteContact  = true;
 const deleteVideo    = true;
 const deleteRoundVideo = true;
+
+const removeFromGroup= false;
+
 
 // https://github.com/peterherrmann/BetterLog
 let Logger = BetterLog.useSpreadsheet(loggerSheet);
@@ -70,6 +76,18 @@ function deleteMessageInChat_(chatID, messageID) {
   Bot.request('deleteMessage', options);
 }
 
+function removeFromGroup_(chatID, userID) {
+  if(removeFromGroup) {
+    let options = {
+      'chat_id': chatID,
+      'user_id': userID,
+      'until_date': Math.floor(new Date().getTime()/1000.0) + bannedInSec
+    };
+
+    Bot.request('banChatMember', options);
+  }
+}
+
 function scheduleClearTmp_() {
   let epochNow = Math.floor(new Date().getTime()/1000.0);
 
@@ -93,6 +111,9 @@ function scheduleClearTmp_() {
       // delete bot message in group
       this.deleteMessageInChat_(row[1], row[2]);
 
+      // remove from group
+      this.removeFromGroup_(row[1], row[0]);
+
       activeSheet.deleteRow((parseInt(i)+1) - rowsDeleted);
       rowsDeleted++;
     }
@@ -100,7 +121,7 @@ function scheduleClearTmp_() {
 }
 
 function scheduler() {
-  ScriptApp.newTrigger('scheduleClearTmp_').timeBased().everyHours(1).inTimezone("Asia/Kuala_Lumpur").create();
+  ScriptApp.newTrigger('scheduleClearTmp_').timeBased().everyMinutes(30).inTimezone("Asia/Kuala_Lumpur").create();
 }
 
 function randomNumber_() {
@@ -174,6 +195,15 @@ function doPost(e) {
 
     }
 
+    else if(Bot.isForwarded()) {
+
+      // delete forwarded message
+      if(deleteForward) {
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
+
+    }
+
     // command message
     else if(Bot.isBotCommand()) {
       let text  = Bot.getTextMessage();
@@ -197,7 +227,7 @@ function doPost(e) {
 
           let c = a.findIndex(x => x[0] == split[1] && x[1] == split[2]);
 
-          activeSheet.getRange(c + 2, 4, 1, 2).setValues([[generate.rand, new Date()]]);
+          activeSheet.getRange(c + 2, 4, 1, 2).setValues([["'"+generate.rand, new Date()]]);
 
           let msg = "Selesaikan _captcha_ supaya anda *dinyahsenyap*.\n\n" +
                     "`" + generate.fancy + "`\n\n" +
@@ -241,6 +271,10 @@ function doPost(e) {
           let c = a.findIndex(x => x[0] == Bot.getUserID());
 
           activeSheet.getRange(c + 2, 1).setValue('X');
+
+          // remove from group
+          this.removeFromGroup_(b[1], b[0]);
+
         }
         else {
           // captcha betul
