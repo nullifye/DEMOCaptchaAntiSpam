@@ -1,7 +1,7 @@
 # DEMOCaptchaAntiSpam
 Serverless Telegram bot on Google infrastructure using [Google App Script Telegram Bot Wrapper](https://github.com/nullifye/telegrambotgoogleappscript) .
 
-This bot is developed to fight spammers/userbot in public group. Meant to be use on single public group and self-hosted on your own Google account.
+This bot is developed to fight spammers/userbot in public group. Meant to be used on single public group and self-hosted on your own Google account.
 
 [DEMO](https://t.me/DEMOCaptchaAntiSpam)
 
