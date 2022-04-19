@@ -6,6 +6,7 @@ const webAppURL  = 'Your-Web-App-URL';
 const botHandlerName = 'Your-Telegram-Bot-Handler-Name';
 const timeLimitInSec = 20;
 const bannedInSec    = 60;
+const botMsgInterval = 180;
 // delete service message
 const deleteSMJoin   = true;
 const deleteSMLeft   = true;
@@ -108,9 +109,6 @@ function scheduleClearTmp_() {
       rowsDeleted++;
     }
     else if (epochNow - epochStart > timeLimitInSec) {
-      // delete bot message in group
-      this.deleteMessageInChat_(row[1], row[2]);
-
       // remove from group
       this.removeFromGroup_(row[1], row[0]);
 
@@ -136,6 +134,58 @@ function randomNumber_() {
 
   return {rand, fancy};
 }
+
+function postInstructionAndPinnedIt_(key1, key2, chatID) {
+  //send message
+  let btn = {
+    'reply_markup': {
+      'inline_keyboard': [
+        [ 
+          { 'text': 'CAPTCHA', 'url': 'https://t.me/' + botHandlerName + '?start=' + chatID }
+        ]
+      ]
+    }
+  };
+
+  let msg = "Anda yang baru menyertai grup perlu selesaikan _captcha_ sebelum *dinyahsenyapkan*.";
+
+  let resultMsg = Bot.sendMessage(msg, btn);
+
+  let tmp = {};
+      tmp[key1] = new Date();
+      tmp[key2] = resultMsg.result.message_id;
+  this.setSProperties_(tmp);
+
+  // pin message
+  let options = {
+    'chat_id': chatID,
+    'message_id': resultMsg.result.message_id,
+    'disable_notification': true
+  };
+
+  Bot.request('pinChatMessage', options);
+}
+
+function getSProperties_() {
+  try {
+    const scriptProperties = PropertiesService.getScriptProperties();
+    return scriptProperties.getProperties();
+  } catch (err) {
+    Logger.log('Failed get property with error %s', err.message);
+
+    return null;
+  }
+}
+
+function setSProperties_(obj) {
+  try {
+    const scriptProperties = PropertiesService.getScriptProperties();
+          scriptProperties.setProperties(obj);
+  } catch (err) {
+    Logger.log('Failed set properties with error %s', err.message);
+  }
+}
+
 
 function doGet(e) {
 
@@ -163,21 +213,32 @@ function doPost(e) {
 
       Bot.request('restrictChatMember', options);
 
-      let btn = {
-        'reply_markup': {
-          'inline_keyboard': [
-            [ 
-              { 'text': 'Selesaikan CAPTCHA', 'url': 'https://t.me/' + botHandlerName + '?start=' + Bot.getUserID() + '_' + Bot.getChatID() }
-            ]
-          ]
+      // checking properties for the last bot message in the group
+      const key1 = Bot.getChatID()+'_LAST_DATETIME';
+      const key2 = Bot.getChatID()+'_LAST_MSG_ID';
+
+      let data = this.getSProperties_();
+      let lastSentAt = data[key1];
+
+      if(!lastSentAt) {
+        this.postInstructionAndPinnedIt_(key1, key2, Bot.getChatID());
+
+      }
+      else {
+        let epochNow  = Math.floor(new Date().getTime()/1000.0);
+        let epochSend = Math.floor(new Date(lastSentAt).getTime()/1000.0);
+
+        if(epochNow - epochSend > botMsgInterval) {
+          this.postInstructionAndPinnedIt_(key1, key2, Bot.getChatID());
+
+          //delete last message
+          let lastMsgId = data[key2];
+          this.deleteMessageInChat_(Bot.getChatID(), lastMsgId);
+
         }
-      };
+      }
 
-      let msg = "Selamat datang [" + Bot.getUserFullName() + "](" + Bot.mentionByID() + "). Selesaikan _captcha_ supaya anda *dinyahsenyap* dalam grup ini.";
-
-      let resultMsg = Bot.sendMessage(msg, btn);
-
-      activeSheet.appendRow([Bot.getUserID(), Bot.getChatID(), resultMsg.result.message_id, '', new Date()]);
+      activeSheet.appendRow([Bot.getUserID(), Bot.getChatID(), '', '', new Date()]);
 
       // delete service message
       if(deleteSMJoin) {
@@ -195,6 +256,15 @@ function doPost(e) {
 
     }
 
+    else if(Bot.isPinnedMessage()) {
+
+      // delete service message
+      if(TelegramJSON.message.pinned_message.from.username == botHandlerName) {
+        this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
+      }
+
+    }
+
     else if(Bot.isForwarded()) {
 
       // delete forwarded message
@@ -207,12 +277,12 @@ function doPost(e) {
     // command message
     else if(Bot.isBotCommand()) {
       let text  = Bot.getTextMessage();
-      let split = text.split(/[\s_]+/);
+      let split = text.split(/[\s_]+/i);
 
-      if(split.length == 3 && split[0] == '/start' && split[1] == Bot.getUserID() && split[2]) {
+      if(split.length == 2 && split[0] == '/start' && split[1]) {
 
         let a = activeSheet.getRange(2, 1, activeSheet.getLastRow(), activeSheet.getLastColumn()).getValues();
-        let b = a.find(x => x[0] == split[1] && x[1] == split[2]);
+        let b = a.find(x => x[0] == Bot.getUserID() && x[1] == split[1]);
 
         let epochNow   = Math.floor(new Date().getTime()/1000.0);
         let epochStart = Math.floor(new Date(b[4]).getTime()/1000.0);
@@ -223,9 +293,9 @@ function doPost(e) {
           Bot.sendMessage(msg);
         }
         else if(b) {
-          let generate = randomNumber_();
+          let generate = this.randomNumber_();
 
-          let c = a.findIndex(x => x[0] == split[1] && x[1] == split[2]);
+          let c = a.findIndex(x => x[0] == Bot.getUserID() && x[1] == split[1]);
 
           activeSheet.getRange(c + 2, 4, 1, 2).setValues([["'"+generate.rand, new Date()]]);
 
@@ -265,16 +335,12 @@ function doPost(e) {
         if(epochNow - epochStart > timeLimitInSec) {
           Bot.sendMessage('Maaf, masa untuk menyelesaikan _captcha_ telah tamat (melebihi ' + timeLimitInSec + ' saat). Anda akan dikeluarkan dari group.');
 
-          // delete bot message in group
-          this.deleteMessageInChat_(b[1], b[2]);
+          // remove from group
+          this.removeFromGroup_(b[1], b[0]);
 
           let c = a.findIndex(x => x[0] == Bot.getUserID());
 
           activeSheet.getRange(c + 2, 1).setValue('X');
-
-          // remove from group
-          this.removeFromGroup_(b[1], b[0]);
-
         }
         else {
           // captcha betul
@@ -296,9 +362,6 @@ function doPost(e) {
 
             Bot.sendMessage('*Tahniah!* Anda telah *dinyahsenyap* dalam grup. Gunakan grup ini untuk manfaat bersama.');
 
-            // delete bot message in group
-            this.deleteMessageInChat_(b[1], b[2]);
-
             let c = a.findIndex(x => x[0] == Bot.getUserID());
 
             activeSheet.getRange(c + 2, 1).setValue('X');
@@ -315,7 +378,7 @@ function doPost(e) {
       }
     }
 
-    // msessage in supergroup
+    // message in supergroup
     else if(Bot.isChatType('supergroup') && !Bot.isTextMessage()) {
       // checking message for deletion
       if(Bot.isGIF() && deleteGIF) {
