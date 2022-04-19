@@ -205,7 +205,7 @@ function doPost(e) {
 
       let options = {
         'chat_id': Bot.getChatID(),
-        'user_id': Bot.getUserID(),
+        'user_id': TelegramJSON.message.new_chat_member.id,
         'permissions': {
           'can_send_messages': false
         }
@@ -238,10 +238,10 @@ function doPost(e) {
         }
       }
 
-      activeSheet.appendRow([Bot.getUserID(), Bot.getChatID(), '', '', new Date()]);
+      activeSheet.appendRow([TelegramJSON.message.new_chat_member.id, Bot.getChatID(), '', '', new Date()]);
 
-      // delete service message
-      if(deleteSMJoin) {
+      // delete service message if self-join
+      if(deleteSMJoin && TelegramJSON.message.new_chat_member.id == TelegramJSON.message.from.id) {
         this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
       }
 
@@ -249,8 +249,8 @@ function doPost(e) {
 
     else if(Bot.isLeftChatMember()) {
 
-      // delete service message
-      if(deleteSMLeft) {
+      // delete service message if self-left
+      if(deleteSMLeft && TelegramJSON.message.left_chat_member.id == TelegramJSON.message.from.id) {
         this.deleteMessageInChat_(Bot.getChatID(), TelegramJSON.message.message_id);
       }
 
@@ -284,11 +284,11 @@ function doPost(e) {
         let a = activeSheet.getRange(2, 1, activeSheet.getLastRow(), activeSheet.getLastColumn()).getValues();
         let b = a.find(x => x[0] == Bot.getUserID() && x[1] == split[1]);
 
-        let epochNow   = Math.floor(new Date().getTime()/1000.0);
-        let epochStart = Math.floor(new Date(b[4]).getTime()/1000.0);
-
         // check if already exists 
         if(b && b[3] != '') {
+          let epochNow   = Math.floor(new Date().getTime()/1000.0);
+          let epochStart = Math.floor(new Date(b[4]).getTime()/1000.0);
+
           let msg = "Selesaikan _captcha_ yang telah dihantar sebelum ini (" + (epochNow-epochStart) + " saat yang lalu).";
           Bot.sendMessage(msg);
         }
@@ -305,6 +305,10 @@ function doPost(e) {
 
           Bot.sendMessage(msg);
 
+        }
+        // tidak wujud
+        else {
+          Bot.sendMessage('Maaf, maklumat anda tidak ditemui. Berkemungkinan anda telah dinyahsenyap dalam grup atau masa untuk menyelesaikan _captcha_ telah tamat atau anda memang telah dikeluarkan dari group.');
         }
       }
       else if(new RegExp('\/whoami(@' + botHandlerName + ')?', 'i').test(text)) {
