@@ -51,7 +51,7 @@ function setWebHook() {
 
 function oneTimeSetup() {
   const sheetNames = {
-    'tmp': ["UserID", "GroupID", "MessageID", "Answers", "DateTime"]
+    'tmp': ["UserID", "GroupID", "MessageID", "Answers", "DateTime", "GroupName"]
   };
 
   for(const key in sheetNames) {
@@ -147,7 +147,10 @@ function postInstructionAndPinnedIt_(key1, key2, chatID) {
     }
   };
 
-  let msg = "Anda yang baru menyertai grup perlu selesaikan _captcha_ sebelum *dinyahsenyapkan*.";
+  let msg = "Anda yang baru menyertai grup perlu selesaikan _captcha_ dalam masa " + timeLimitInSec + " saat sebelum *dinyahsenyapkan*.";
+
+  if(removeFromGroup)
+    msg += "\n\nKegagalan berbuat demikian akan mengakibatkan anda dikeluarkan daripada grup ini. Harap maklum."
 
   let resultMsg = Bot.sendMessage(msg, btn);
 
@@ -180,7 +183,7 @@ function getSProperties_() {
 function setSProperties_(obj) {
   try {
     const scriptProperties = PropertiesService.getScriptProperties();
-          scriptProperties.setProperties(obj);
+    scriptProperties.setProperties(obj);
   } catch (err) {
     Logger.log('Failed set properties with error %s', err.message);
   }
@@ -238,7 +241,7 @@ function doPost(e) {
         }
       }
 
-      activeSheet.appendRow([TelegramJSON.message.new_chat_member.id, Bot.getChatID(), '', '', new Date()]);
+      activeSheet.appendRow([TelegramJSON.message.new_chat_member.id, Bot.getChatID(), '', '', new Date(), TelegramJSON.message.chat.title]);
 
       // delete service message if self-join
       if(deleteSMJoin && TelegramJSON.message.new_chat_member.id == TelegramJSON.message.from.id) {
@@ -289,7 +292,7 @@ function doPost(e) {
           let epochNow   = Math.floor(new Date().getTime()/1000.0);
           let epochStart = Math.floor(new Date(b[4]).getTime()/1000.0);
 
-          let msg = "Selesaikan _captcha_ yang telah dihantar sebelum ini (" + (epochNow-epochStart) + " saat yang lalu).";
+          let msg = "Selesaikan _captcha_ yang telah dihantar sebelum ini (" + (epochNow-epochStart) + " saat yang lalu) supaya anda *dinyahsenyapkan* dalam grup *" + b[5] + "*.";
           Bot.sendMessage(msg);
         }
         else if(b) {
@@ -299,7 +302,7 @@ function doPost(e) {
 
           activeSheet.getRange(c + 2, 4, 1, 2).setValues([["'"+generate.rand, new Date()]]);
 
-          let msg = "Selesaikan _captcha_ supaya anda *dinyahsenyap*.\n\n" +
+          let msg = "Selesaikan _captcha_ supaya anda *dinyahsenyap* dalam grup *" + b[5] + "*.\n\n" +
                     "`" + generate.fancy + "`\n\n" +
                     "Tulis semula nombor di atas dalam masa *" + timeLimitInSec + " saat* dari sekarang.";
 
@@ -308,7 +311,7 @@ function doPost(e) {
         }
         // tidak wujud
         else {
-          Bot.sendMessage('Maaf, maklumat anda tidak ditemui. Berkemungkinan anda telah dinyahsenyap dalam grup atau masa untuk menyelesaikan _captcha_ telah tamat atau anda memang telah dikeluarkan dari group.');
+          Bot.sendMessage('Maaf, maklumat anda tidak ditemui. Berkemungkinan *anda telah dinyahsenyap dalam grup* atau *masa untuk menyelesaikan* _captcha_ *telah tamat*.');
         }
       }
       else if(new RegExp('\/whoami(@' + botHandlerName + ')?', 'i').test(text)) {
@@ -337,7 +340,14 @@ function doPost(e) {
 
         // expired
         if(epochNow - epochStart > timeLimitInSec) {
-          Bot.sendMessage('Maaf, masa untuk menyelesaikan _captcha_ telah tamat (melebihi ' + timeLimitInSec + ' saat). Anda akan dikeluarkan dari group.');
+          let msg = "Maaf, masa untuk menyelesaikan _captcha_ telah tamat (melebihi " + timeLimitInSec + " saat).";
+
+          if(removeFromGroup)
+            msg += " Anda akan dikeluarkan daripada grup *" + b[5] + "*.";
+          else
+            msg += " Anda masih berada dalam grup *" + b[5] + "* tetapi tidak dibenarkan menghantar sebarang pesanan.";
+
+          Bot.sendMessage(msg);
 
           // remove from group
           this.removeFromGroup_(b[1], b[0]);
@@ -355,16 +365,17 @@ function doPost(e) {
               'chat_id': b[1],
               'user_id': b[0],
               'permissions': {
-                'can_send_messages': true,
+                'can_send_messages'      : true,
                 'can_send_media_messages': true,
-                'can_send_polls': true,
-                'can_send_other_messages': true
+                'can_send_polls'         : true,
+                'can_send_other_messages': true,
+                'can_invite_users'       : false
               }
             };
 
             Bot.request('restrictChatMember', options);
 
-            Bot.sendMessage('*Tahniah!* Anda telah *dinyahsenyap* dalam grup. Gunakan grup ini untuk manfaat bersama.');
+            Bot.sendMessage("*Tahniah!* Anda telah *dinyahsenyap* dalam grup. Gunakan grup *" + b[5] + "* untuk manfaat bersama.");
 
             let c = a.findIndex(x => x[0] == Bot.getUserID());
 
@@ -372,13 +383,13 @@ function doPost(e) {
 
           }
           else {
-            Bot.sendMessage('Maaf, _captcha_ tidak tepat. Cuba lagi. Anda hanya ada *' + (timeLimitInSec - (epochNow - epochStart)) + ' saat* sahaja.');
+            Bot.sendMessage('Maaf, _captcha_ tidak tepat. Sila cuba semula. Anda hanya ada *' + (timeLimitInSec - (epochNow - epochStart)) + ' saat* sahaja lagi.');
           }
         }
       }
       // tidak wujud
       else {
-        Bot.sendMessage('Maaf, maklumat anda tidak ditemui. Berkemungkinan anda telah dinyahsenyap dalam grup atau masa untuk menyelesaikan _captcha_ telah tamat atau anda memang telah dikeluarkan dari group.');
+        Bot.sendMessage('Maaf, maklumat anda tidak ditemui. Berkemungkinan *anda telah dinyahsenyap dalam grup* atau *masa untuk menyelesaikan* _captcha_ *telah tamat*.');
       }
     }
 
