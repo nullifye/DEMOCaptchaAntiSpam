@@ -116,6 +116,31 @@ function scheduleClearTmp_() {
       rowsDeleted++;
     }
   }
+
+  // delete last welcome message passed 1 day (86400 secs)
+  const aDayInSec = 86400;
+  let data = this.getSProperties_();
+
+  for (let key in data) {
+
+    if(key.endsWith("_LAST_DATETIME")) {
+      let sentAt = data[key];
+      let epochSend = Math.floor(new Date(sentAt).getTime()/1000.0);
+
+      if(epochNow - epochSend > aDayInSec) {
+        let chatID = key.split('_')[0];
+
+        let lastMsgId = data[chatID + '_LAST_MSG_ID'];
+        this.deleteMessageInChat_(chatID, lastMsgId);
+
+        // delete property
+        this.deleteSProperty_(key);
+        this.deleteSProperty_(chatID + '_LAST_MSG_ID');
+      }
+    }
+
+  }
+
 }
 
 function scheduler() {
@@ -174,7 +199,7 @@ function getSProperties_() {
     const scriptProperties = PropertiesService.getScriptProperties();
     return scriptProperties.getProperties();
   } catch (err) {
-    Logger.log('Failed get property with error %s', err.message);
+    Logger.log('Failed get properties with error %s', err.message);
 
     return null;
   }
@@ -186,6 +211,15 @@ function setSProperties_(obj) {
     scriptProperties.setProperties(obj);
   } catch (err) {
     Logger.log('Failed set properties with error %s', err.message);
+  }
+}
+
+function deleteSProperty_(key) {
+  try {
+    const scriptProperties = PropertiesService.getScriptProperties();
+    scriptProperties.deleteProperty(key);
+  } catch (err) {
+    Logger.log('Failed delete property with error %s', err.message);
   }
 }
 
@@ -234,7 +268,7 @@ function doPost(e) {
         if(epochNow - epochSend > botMsgInterval) {
           this.postInstructionAndPinnedIt_(key1, key2, Bot.getChatID());
 
-          //delete last message
+          // delete last welcome message
           let lastMsgId = data[key2];
           this.deleteMessageInChat_(Bot.getChatID(), lastMsgId);
 
