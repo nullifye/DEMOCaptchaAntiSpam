@@ -28,6 +28,14 @@ const deleteRoundVideo = true;
 
 const removeFromGroup= false;
 
+const unmute = {
+  'can_send_messages'      : true,
+  'can_send_media_messages': true,
+  'can_send_polls'         : true,
+  'can_send_other_messages': true,
+  'can_invite_users'       : false
+};
+
 
 // https://github.com/peterherrmann/BetterLog
 let Logger = BetterLog.useSpreadsheet(loggerSheet);
@@ -161,7 +169,7 @@ function randomNumber_() {
 }
 
 function postInstructionAndPinnedIt_(key1, key2, chatID) {
-  //send message
+  // send message
   let btn = {
     'reply_markup': {
       'inline_keyboard': [
@@ -172,7 +180,7 @@ function postInstructionAndPinnedIt_(key1, key2, chatID) {
     }
   };
 
-  let msg = "Anda yang baru menyertai grup perlu selesaikan _captcha_ dalam masa " + timeLimitInSec + " saat sebelum *dinyahsenyapkan*.";
+  let msg = "Anda yang baru sertai grup perlu selesaikan _captcha_ dalam masa " + timeLimitInSec + " saat sebelum *dinyahsenyapkan*.";
 
   if(removeFromGroup)
     msg += "\n\nKegagalan berbuat demikian akan mengakibatkan anda dikeluarkan daripada grup ini. Harap maklum."
@@ -275,7 +283,11 @@ function doPost(e) {
         }
       }
 
-      activeSheet.appendRow([TelegramJSON.message.new_chat_member.id, Bot.getChatID(), '', '', new Date(), TelegramJSON.message.chat.title]);
+      let a = activeSheet.getRange(2, 1, activeSheet.getLastRow(), activeSheet.getLastColumn()).getValues();
+      let b = a.find(x => x[0] == TelegramJSON.message.new_chat_member.id && x[1] == Bot.getChatID());
+
+      if(!b)
+        activeSheet.appendRow([TelegramJSON.message.new_chat_member.id, Bot.getChatID(), '', '', new Date(), TelegramJSON.message.chat.title]);
 
       // delete service message if self-join
       if(deleteSMJoin && TelegramJSON.message.new_chat_member.id == TelegramJSON.message.from.id) {
@@ -322,14 +334,7 @@ function doPost(e) {
         let b = a.find(x => x[0] == Bot.getUserID() && x[1] == split[1]);
 
         // check if already exists 
-        if(b && b[3] != '') {
-          let epochNow   = Math.floor(new Date().getTime()/1000.0);
-          let epochStart = Math.floor(new Date(b[4]).getTime()/1000.0);
-
-          let msg = "Selesaikan _captcha_ yang telah dihantar sebelum ini (" + (epochNow-epochStart) + " saat yang lalu) supaya anda *dinyahsenyapkan* dalam grup *" + b[5] + "*.";
-          Bot.sendMessage(msg);
-        }
-        else if(b) {
+        if(b) {
           let generate = this.randomNumber_();
 
           let c = a.findIndex(x => x[0] == Bot.getUserID() && x[1] == split[1]);
@@ -366,60 +371,52 @@ function doPost(e) {
 
       // check if already exists
       let a = activeSheet.getRange(2, 1, activeSheet.getLastRow(), activeSheet.getLastColumn()).getValues();
-      let b = a.find(x => x[0] == Bot.getUserID());
+      let b = a.filter(x => x[0] == Bot.getUserID());
 
-      if(b) {
-        let epochNow   = Math.floor(new Date().getTime()/1000.0);
-        let epochStart = Math.floor(new Date(b[4]).getTime()/1000.0);
+      if(b.length > 0) {
 
-        // expired
-        if(epochNow - epochStart > timeLimitInSec) {
-          let msg = "Maaf, masa untuk menyelesaikan _captcha_ telah tamat (melebihi " + timeLimitInSec + " saat).";
+        let c = b.filter(x => x[3] == text);
 
-          if(removeFromGroup)
-            msg += " Anda akan dikeluarkan daripada grup *" + b[5] + "*.";
-          else
-            msg += " Anda masih berada dalam grup *" + b[5] + "* tetapi tidak dibenarkan menghantar sebarang pesanan.";
+        // captcha betul
+        if(c.length > 0) {
+          let epochNow   = Math.floor(new Date().getTime()/1000.0);
+          let epochStart = Math.floor(new Date(c[0][4]).getTime()/1000.0);
 
-          Bot.sendMessage(msg);
+          // expired
+          if(epochNow - epochStart > timeLimitInSec) {
+            let msg = "Maaf, masa untuk menyelesaikan _captcha_ telah tamat (melebihi " + timeLimitInSec + " saat).";
 
-          // remove from group
-          this.removeFromGroup_(b[1], b[0]);
+            if(removeFromGroup)
+              msg += " Anda akan dikeluarkan daripada grup *" + c[0][5] + "*.";
+            else
+              msg += " Anda masih berada dalam grup *" + c[0][5] + "* tetapi tidak dibenarkan menghantar sebarang pesanan.";
 
-          let c = a.findIndex(x => x[0] == Bot.getUserID());
+            Bot.sendMessage(msg);
 
-          activeSheet.getRange(c + 2, 1).setValue('X');
-        }
-        else {
-          // captcha betul
-          if(b[3] == text) {
-
+            // remove from group
+            this.removeFromGroup_(c[0][1], c[0][0]);
+          }
+          else {
             // remove restriction
             let options = {
-              'chat_id': b[1],
-              'user_id': b[0],
-              'permissions': {
-                'can_send_messages'      : true,
-                'can_send_media_messages': true,
-                'can_send_polls'         : true,
-                'can_send_other_messages': true,
-                'can_invite_users'       : false
-              }
+              'chat_id': c[0][1],
+              'user_id': c[0][0],
+              'permissions': unmute
             };
 
             Bot.request('restrictChatMember', options);
 
-            Bot.sendMessage("*Tahniah!* Anda telah *dinyahsenyap* dalam grup. Gunakan grup *" + b[5] + "* untuk manfaat bersama.");
-
-            let c = a.findIndex(x => x[0] == Bot.getUserID());
-
-            activeSheet.getRange(c + 2, 1).setValue('X');
-
+            Bot.sendMessage("*Tahniah!* Anda telah *dinyahsenyap* dalam grup. Gunakan grup *" + c[0][5] + "* untuk manfaat bersama.");
           }
-          else {
-            Bot.sendMessage('Maaf, _captcha_ tidak tepat. Sila cuba semula. Anda hanya ada *' + (timeLimitInSec - (epochNow - epochStart)) + ' saat* sahaja lagi.');
-          }
+
+          let d = a.findIndex(x => x[0] == Bot.getUserID() && x[3] == text);
+
+          activeSheet.getRange(d + 2, 1).setValue('X');
         }
+        else {
+          Bot.sendMessage('Maaf, _captcha_ tidak tepat. Sila tulis semula.');
+        }
+
       }
       // tidak wujud
       else {
