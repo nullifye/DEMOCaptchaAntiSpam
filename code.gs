@@ -4,7 +4,7 @@ const loggerSheet= 'Your-Logger-Sheet-ID-Goes-Here';
 const webAppURL  = 'Your-Web-App-URL';
 
 const botHandlerName = 'Your-Telegram-Bot-Handler-Name';
-const timeLimitInSec = 20;
+const timeLimitInSec = 30;
 const bannedInSec    = 60;
 const botMsgInterval = 180;
 // delete service message
@@ -42,7 +42,7 @@ let Logger = BetterLog.useSpreadsheet(loggerSheet);
 
 let Bot = Nahfar.createBot(tgBotToken, botSheet);
 
-const fancynumber = ['0̷','1̶', '2͓̽', '3̷', '4͆', '5͓̽', '6̶', '7͓̽', '8̷', '͓9͓̽'];
+const fancynumber = ['⍬','˦', 'ㄹ', 'Ӡ', '4͆', 'ち', '６', '͓7͓̽', '〥', '͓୨'];
 
 let theSSA = SpreadsheetApp.openById(botSheet);
 let activeSheet = theSSA.getSheetByName('tmp');
@@ -341,11 +341,12 @@ function doPost(e) {
 
           activeSheet.getRange(c + 2, 4, 1, 2).setValues([["'"+generate.rand, new Date()]]);
 
-          let msg = "Selesaikan _captcha_ supaya anda *dinyahsenyap* dalam grup *" + b[5] + "*.\n\n" +
-                    "`" + generate.fancy + "`\n\n" +
-                    "Tulis semula nombor di atas dalam masa *" + timeLimitInSec + " saat* dari sekarang.";
+          let options = {'parse_mode': 'MarkdownV2'};
+          let msg = "Selesaikan _captcha_ supaya anda *dinyahsenyap* dalam grup __*" + b[5] + "*__\\.\n\n" +
+                    "||" + generate.fancy + "||\n\n" +
+                    "Tulis semula nombor di atas dalam masa *" + timeLimitInSec + " saat* dari sekarang\\.";
 
-          Bot.sendMessage(msg);
+          Bot.sendMessage(msg, options);
 
         }
         // tidak wujud
@@ -354,12 +355,13 @@ function doPost(e) {
         }
       }
       else if(new RegExp('\/whoami(@' + botHandlerName + ')?', 'i').test(text)) {
-        let msg = "`ID        :` `" + Bot.getUserID() + "`\n" +
-                  "`Username  :` " + Bot.getUsername() + "\n" +
-                  "`First Name:` " + Bot.getUserFirstName() + "\n" +
-                  "`Last Name :` " + Bot.getUserLastName() + "\n" +
-                  "`Language  :` " + (TelegramJSON.message.from.language_code || '') + "\n" +
-                  "`Is bot    :` " + TelegramJSON.message.from.is_bot;
+        let msg = "👤 *You*\n" +
+                  " ├ `ID        :` [" + Bot.getUserID() + "](" + Bot.mentionByID() + ")\n" +
+                  " ├ `Username  :` " + Bot.getUsername() + "\n" +
+                  " ├ `First Name:` " + Bot.getUserFirstName() + "\n" +
+                  " ├ `Last Name :` " + Bot.getUserLastName() + "\n" +
+                  " ├ `Language  :` " + (TelegramJSON.message.from.language_code || '') + "\n" +
+                  " └ `Is bot    :` " + TelegramJSON.message.from.is_bot;
 
         Bot.sendMessage(msg);
       }
