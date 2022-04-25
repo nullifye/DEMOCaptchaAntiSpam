@@ -50,11 +50,17 @@ let activeSheet = theSSA.getSheetByName('tmp');
 
 function setWebHook() {
   let payload = {
-    url: webAppURL
+    url: webAppURL,
+    max_connections: 50
   };
 
   let response = Bot.request('setWebhook', payload);
   Logger.log(JSON.stringify(response));
+}
+
+function getWebHookInfo() {
+  let response = Bot.request('getWebhookInfo');
+  console.log(JSON.stringify(response));
 }
 
 function oneTimeSetup() {
