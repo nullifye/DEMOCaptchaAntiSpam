@@ -88,7 +88,11 @@ function deleteMessageInChat_(chatID, messageID) {
     'message_id': messageID
   };
 
-  Bot.request('deleteMessage', options);
+  try {
+    Bot.request('deleteMessage', options);
+  } catch (err) {
+    Logger.log(err.message);
+  }
 }
 
 function removeFromGroup_(chatID, userID) {
